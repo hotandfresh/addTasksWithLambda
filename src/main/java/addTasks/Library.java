@@ -3,8 +3,70 @@
  */
 package addTasks;
 
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
+
 public class Library {
-    public boolean someLibraryMethod() {
-        return true;
+    private DynamoDB dynamoDb;
+    private String DYNAMODB_TABLE_NAME = "taskmaster";
+    private Regions REGION = Regions.US_WEST_2;
+
+    public Task save(Task task){
+        final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+        DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
+
+        Task t = new Task(task.getTitle(), task.getDescription(), task.getAssignee());
+        if(task.getAssignee() == null){
+            History history = new History("Task was created and is " + t.getStatus());
+            t.addToHistory(history);
+        } else {
+            t.setAssignee(task.getAssignee());
+            t.setStatus("assigned");
+            History history = new History("Task was created and assigned to " + task.getAssignee());
+            t.addToHistory(history);
+        }
+
+        ddbMapper.save(t);
+
+        return task;
+    }
+
+    public Task update(Task task){
+        final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+        DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
+
+        Task t = ddbMapper.load(Task.class, task.getId());
+        String status = t.getStatus();
+
+        if(t.getAssignee() != null){
+            switch(status){
+                case "available":
+                    t.setStatus("assigned");
+                    History history = new History("Task was assigned to " + t.getAssignee());
+                    t.addToHistory(history);
+                    break;
+
+                case "assigned":
+                    t.setStatus("accepted");
+                    History history2 = new History("Task was accepted by " + t.getAssignee());
+                    t.addToHistory(history2);
+                    break;
+
+                case "accepted":
+                    t.setStatus("finished");
+                    History history3 = new History("Task was finished by " + t.getAssignee());
+                    t.addToHistory(history3);
+                    t.setStatus("finished");
+            }
+            ddbMapper.save(t);
+        }
+
+        return task;
     }
 }
