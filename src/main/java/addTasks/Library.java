@@ -8,14 +8,39 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
+import com.amazonaws.services.dynamodbv2.document.Attribute;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
+
+import java.util.HashMap;
+import java.util.List;
 
 public class Library {
     private DynamoDB dynamoDb;
     private String DYNAMODB_TABLE_NAME = "taskmaster";
     private Regions REGION = Regions.US_WEST_2;
+
+    public List<Task> getAllTask(){
+        final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+        DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
+        return ddbMapper.scan(Task.class, new DynamoDBScanExpression());
+
+    }
+
+    public List<Task> getUserTasks(Task task){
+        HashMap<String, AttributeValue> eav = new HashMap<>();
+        eav.put(":v1", new AttributeValue().withS(task.getAssignee()));
+        DynamoDBScanExpression scanExpression = new DynamoDBScanExpression()
+                .withFilterExpression("begins with (assignee,:v1)")
+                .withExpressionAttributeValues(eav);
+
+        final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+        DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
+        return ddbMapper.scan(Task.class, scanExpression);
+    }
 
     public Task save(Task task){
         final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
@@ -35,6 +60,15 @@ public class Library {
         ddbMapper.save(t);
 
         return task;
+    }
+
+    public Task deleteTask(Task task){
+        final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+        DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
+
+        Task t = ddbMapper.load(Task.class, task.getId());
+        ddbMapper.delete(t);
+        return t;
     }
 
     public Task update(Task task){
