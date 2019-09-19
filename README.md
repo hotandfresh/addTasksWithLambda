@@ -10,6 +10,17 @@ Since this is still connected to a hosted [frontend](https://github.com/hotandfr
 
 This cannot be run locally because an AWS account is needed because lambda functions, an elastic beanstalk, and an ec2 instance are all needed to get this working.
 
+## Endpoints
+These routes are currently hosted at this [AWS API Gateway](https://yajkljymp9.execute-api.us-west-2.amazonaws.com/prod/tasks/)
+
+```/tasks```: Gets all the tasks and this is the end point to create a task
+
+```/tasks/{user}```: Gets tasks for a specific user
+
+```/tasks/{id}/state```: Updates the statues of a task
+
+```/tasks/{id}/assign/{assignee}```: Updates the assignee to a task
+
 ## Issues
 The biggest hurdle was how to get the id for a task. However, the ```.load``` method on a DynamoDBMapper was able to get it.  The documentation was found [here](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBMapper.Methods.html#DynamoDBMapper.Methods.load).
 
