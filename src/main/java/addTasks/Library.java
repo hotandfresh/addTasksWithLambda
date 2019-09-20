@@ -10,12 +10,14 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ScanRequest;
-import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.google.gson.Gson;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 public class Library {
     private DynamoDB dynamoDb;
@@ -28,16 +30,40 @@ public class Library {
         return ddbMapper.scan(Task.class, new DynamoDBScanExpression());
     }
 
-    public List<Task> getUserTasks(Task task){
+//    public List<Task> getUserTasks(Task task){
+//        HashMap<String, AttributeValue> eav = new HashMap<>();
+//        eav.put(":v1", new AttributeValue().withS(task.getAssignee()));
+//        DynamoDBScanExpression scanExpression = new DynamoDBScanExpression()
+//                .withFilterExpression("assignee = :v1")
+//                .withExpressionAttributeValues(eav);
+//
+//        final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
+//        DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
+//        return ddbMapper.scan(Task.class, scanExpression);
+//    }
+
+    public APIGatewayProxyResponseEvent getUserTasks(APIGatewayProxyRequestEvent event){
+        String body="";
         HashMap<String, AttributeValue> eav = new HashMap<>();
-        eav.put(":v1", new AttributeValue().withS(task.getAssignee()));
+        Map<String, String> map = event.getPathParameters();
+        String assignee = map.get("user");
+        eav.put(":v1", new AttributeValue().withS(assignee));
         DynamoDBScanExpression scanExpression = new DynamoDBScanExpression()
                 .withFilterExpression("assignee = :v1")
                 .withExpressionAttributeValues(eav);
 
         final AmazonDynamoDB ddb = AmazonDynamoDBClientBuilder.defaultClient();
         DynamoDBMapper ddbMapper = new DynamoDBMapper(ddb);
-        return ddbMapper.scan(Task.class, scanExpression);
+        List<Task> tasks =  ddbMapper.scan(Task.class, scanExpression);
+        APIGatewayProxyResponseEvent res = new APIGatewayProxyResponseEvent();
+        res.setBody(toListString(tasks));
+        return res;
+    }
+
+    public String toListString(List<Task> tasks){
+         Gson gson = new Gson();
+         String json = gson.toJson(tasks);
+         return json;
     }
 
     public Task createTask(Task task){
